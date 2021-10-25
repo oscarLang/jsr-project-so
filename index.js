@@ -36,9 +36,14 @@ async function getRandomStock() {
 (function market() {
     var randomTimeOut = Math.round(Math.random() * (2000 - 1000)) + 1000;
     setTimeout(async function() {
-        let changedStock = await getRandomStock();
-        io.emit("marketChange", changedStock);
-        market();
+        try {
+            let changedStock = await getRandomStock();
+            console.log(changedStock);
+            io.emit("marketChange", changedStock);
+        } catch (error) {
+            console.log(error);
+        }
+        market()
     }, randomTimeOut);
 }());
 

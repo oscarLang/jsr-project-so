@@ -17,45 +17,30 @@ async function getAllObjectsFromDb() {
     return res;
 }
 
-async function getOneObject(stock) {
+async function getOneObject(ticker) {
     const client  = await mongo.connect(dsn);
     const db = await client.db(dbName);
     const col = await db.collection('objects');
-    const res = await col.findOne({stock: stock});
+    const res = await col.findOne({ticker: ticker});
     return res;
 }
 
-async function updateObjectInDb(stock, newPrice) {
-    const date = new Date();
-    const formatedDate = format(date, "yyyy/MM/dd");
-    const year = getYear(date);
-    const month = getMonth(date);
-    const day = getDay(date);
-    const hour = getHours(date);
-    const minute = getMinutes(date);
+
+async function updateHistoryOfAllObjects(timeFrame, date, slice) {
     const client  = await mongo.connect(dsn);
     const db = await client.db(dbName);
     const col = await db.collection('objects');
-    await col.updateOne(
+    await col.updateMany(
+        {},
         {
-            $and: [
-                {stock: stock},
-                {"history.minute": {$ne: minute}}
-            ]
-        },
-        {
-            $set: {
-                price: newPrice
-            },
             $push: {
-                history: {
-                    price: newPrice,
-                    date: formatedDate,
-                    year: year,
-                    month: month,
-                    day: day,
-                    hour: hour,
-                    minute: minute
+                [timeFrame]: {
+                    $each: [{
+                        date: date,
+                        formatedDate: format(date, "yyyy/MM/dd-HH:mm"),
+                        price: '$price'
+                    }],
+                    $slice: slice
                 }
             }
         }
@@ -63,18 +48,38 @@ async function updateObjectInDb(stock, newPrice) {
     await client.close();
 }
 
+
+async function updatePrice(ticker, newPrice) {
+    const client  = await mongo.connect(dsn);
+    const db = await client.db(dbName);
+    const col = await db.collection('objects');
+    await col.updateOne(
+        {
+            ticker: ticker
+        },
+        {
+            $set: {
+                price: newPrice
+            }
+        }
+    );
+    await client.close();
+}
+
 function getNewPrice(obj) {
-    let trend = (Math.random() > 0.5) ? 1 : -1;
-    if (obj.price < 1) {
-        trend = 1;
+    const random = Math.random();
+    let changeInPercent = (2 * obj.volatility * random);
+    if (changeInPercent > obj.volatility) {
+        changeInPercent -= (2 * obj.volatility);
     }
-    let newPrice = (obj.price * obj.rate) + (obj.variance * trend);
-    return newPrice.toFixed(2);
+    let newPrice = obj.price + (obj.price * changeInPercent);
+    return parseFloat(newPrice).toFixed(2);
 }
 
 module.exports = {
     getAllObjectsFromDb: getAllObjectsFromDb,
     getOneObject: getOneObject,
-    updateObjectInDb: updateObjectInDb,
-    getNewPrice: getNewPrice
+    updatePrice: updatePrice,
+    getNewPrice: getNewPrice,
+    updateHistoryOfAllObjects: updateHistoryOfAllObjects
 };

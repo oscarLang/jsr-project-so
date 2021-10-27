@@ -26,25 +26,31 @@ async function getOneObject(ticker) {
 }
 
 
-async function updateHistoryOfAllObjects(timeFrame, date, slice) {
+async function updateHistoryOfAllObjects(timeFrame, date, slice, ticker,) {
     const client  = await mongo.connect(dsn);
     const db = await client.db(dbName);
     const col = await db.collection('objects');
-    await col.updateMany(
-        {},
-        {
-            $push: {
-                [timeFrame]: {
-                    $each: [{
-                        date: date,
-                        formatedDate: format(date, "yyyy/MM/dd-HH:mm"),
-                        price: '$price'
-                    }],
-                    $slice: slice
+    const res = await col.find().toArray();
+    await Promise.all(res.map( async (stock) => {
+        await col.updateOne(
+            {
+                ticker: stock.ticker
+            },
+            {
+                $push: {
+                    [timeFrame]: {
+                        $each: [{
+                            date: date,
+                            formatedDate: format(date, "yyyy/MM/dd-HH:mm"),
+                            price: stock.price
+                        }],
+                        $slice: slice,
+                        $sort: { "date": -1}
+                    }
                 }
             }
-        }
-    );
+        );
+    }));
     await client.close();
 }
 
@@ -68,12 +74,13 @@ async function updatePrice(ticker, newPrice) {
 
 function getNewPrice(obj) {
     const random = Math.random();
-    let changeInPercent = (2 * obj.volatility * random);
+    let changeInPercent = (2 * (obj.volatility * random));
     if (changeInPercent > obj.volatility) {
         changeInPercent -= (2 * obj.volatility);
     }
-    let newPrice = obj.price + (obj.price * changeInPercent);
-    return parseFloat(newPrice).toFixed(2);
+    let change = obj.price * changeInPercent;
+    let newPrice = +obj.price + +change;
+    return parseFloat(newPrice).toFixed(5);
 }
 
 module.exports = {

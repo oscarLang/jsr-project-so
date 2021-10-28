@@ -41,7 +41,6 @@ async function getRandomStock() {
         try {
             let changedStock = await getRandomStock();
             if (Number(changedStock.change) !== 0) {
-                console.log(changedStock);
                 io.emit(`marketChange${changedStock.ticker}`, changedStock);
             }
         } catch (error) {
@@ -64,9 +63,6 @@ async function getRandomStock() {
         try {
             const date = startOfHour(new Date());
             await market.updateHistoryOfAllObjects("hourly", date, 168);
-            const stocks = await market.getAllObjectsFromDb();
-            console.log(stocks);
-            io.emit("hourly", stocks);
             console.log("Hours history updated");
         } catch (error) {
             console.log("Error while updating hour history", error);

@@ -1,10 +1,14 @@
+const dotenv = require("dotenv")
+dotenv.config()
 const express = require('express');
 const app = express();
+
+const FRONTEND = process.env.FRONTEND_URL || "https://stocksocket.oscarlang.tech";
 
 const server = require('http').createServer(app);
 const io = require("socket.io")(server, {
     cors: {
-      origin: "http://localhost:3000",
+      origin: FRONTEND ,
       methods: ["GET", "POST"]
     }
 });
@@ -79,4 +83,4 @@ async function getRandomStock() {
         }
     }, 86400000);
 }());
-server.listen(8300);
+server.listen(8200);
